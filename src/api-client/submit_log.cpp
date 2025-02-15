@@ -1,5 +1,5 @@
 #include "api-client/submit_log.h"
-#include "api-client/httpsBegin.h"
+#include "api-client/httpBegin.h"
 #include "config.h"
 
 bool submitLogToApi(LogApiInput& input) {
@@ -7,7 +7,7 @@ bool submitLogToApi(LogApiInput& input) {
     client.setInsecure();
 
     HTTPClient http;
-    if (!httpsBegin(http, client, API_BASE_URL + String("/api/log"))) {
+    if (!httpBegin(http, client, API_BASE_URL + String("/api/log"))) {
         return false;
     }
 
