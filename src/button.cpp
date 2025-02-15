@@ -2,40 +2,48 @@
 #include <config.h>
 #include "button.h"
 
-ButtonPressResult read_button_presses()
-{
-  bool sampled_high = false;
-  auto time_start = millis();
-  Log_info("Button time=%d: start", time_start);
-  while (1)
-  {
-    auto elapsed = millis() - time_start;
-    auto pin = digitalRead(PIN_INTERRUPT);
-    if (pin == LOW && elapsed > BUTTON_HOLD_TIME)
-    {
-      Log_info("Button time=%d pin=%d: detected long press", elapsed, pin);
-      return LongPress;
-    }
-    else if (pin == HIGH && !sampled_high)
-    {
-      Log_info("Button time=%d pin=%d: NOT reset; waiting for double-click", elapsed, pin);
-      sampled_high = true;
-    }
-    else if (pin == LOW && sampled_high)
-    {
-      Log_info("Button time=%d pin=%d: detected double-click", elapsed, pin);
-      return DoubleClick;
-    }
-    else if (pin == HIGH && elapsed > 500)
-    {
-      Log_info("Button time=%d pin=%d: detected no-action", elapsed, pin);
-      return NoAction;
-    }
-  }
-  return NoAction;
-}
+ButtonPressResult onWakeByButton() {
+    unsigned long msOfFirstPress = millis();
+    bool wasReleased = false;
 
-const char *ButtonPressResultNames[] = {
-    "LongPress",
-    "DoubleClick",
-    "NoAction"};
+    Log_info(
+        "onWakeByButton: Wake Time (%d)",
+        msOfFirstPress
+    );
+
+    while (true) {
+        int isReleased = digitalRead(PIN_INTERRUPT);
+        unsigned long msFromFirstPress = millis() - msOfFirstPress;
+
+        if (isReleased) {
+            if (!wasReleased) {
+                wasReleased = true;
+            } else if (msFromFirstPress > 2e3) {
+                Log_info(
+                    "onWakeByButton: Position (%d), Time From First Press (%d), Was Released (%d) = No Action",
+                    isReleased, msFromFirstPress, wasReleased
+                );
+
+                return NoAction;
+            }
+        } else {
+            if (msFromFirstPress > BUTTON_HOLD_TIME) {
+                Log_info(
+                    "onWakeByButton: Position (%d), Time From First Press (%d), Was Released (%d) = Long Press",
+                    isReleased, msFromFirstPress, wasReleased
+                );
+
+                return LongPress;
+            }
+
+            if (wasReleased) {
+                Log_info(
+                    "onWakeByButton: Position (%d), Time From First Press (%d), Was Released (%d) = Double Click",
+                    isReleased, msFromFirstPress, wasReleased
+                );
+
+                return DoubleClick;
+            }
+        }
+    }
+}
