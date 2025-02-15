@@ -1,5 +1,5 @@
 #include "api-client/submit_log.h"
-#include "api-client/httpsBegin.h"
+#include "api-client/httpBegin.h"
 #include "config.h"
 
 bool submitLogToApi(LogApiInput& input) {
