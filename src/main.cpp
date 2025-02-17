@@ -2,12 +2,9 @@
 
 #include "bl.h"
 
-void setup()
-{
-  bl_init();
+void setup() {
+    bl_init();
 }
 
-void loop()
-{
-  bl_process();
+void loop() {
 }

@@ -2,111 +2,94 @@
 #include "config.h"
 #include "trmnl_log.h"
 
-void store_log(const char *log_buffer, size_t size, Preferences &preferences)
-{
-  bool result = false;
-
-  for (uint8_t i = 0; i < LOG_MAX_NOTES_NUMBER; i++)
-  {
-    String key = PREFERENCES_LOG_KEY + String(i);
-    if (preferences.isKey(key.c_str()))
-    {
-      Log_info("key %s exists", key.c_str());
-      result = false;
-    }
-    else
-    {
-      Log_info("key %s not exists", key.c_str());
-      size_t res = preferences.putString(key.c_str(), log_buffer);
-      Log_info("Initial size %d. Received size - %d", size, res);
-      if (res == size)
-      {
-        Log_info("log note written success");
-      }
-      else
-      {
-        Log_info("log note writing failed");
-      }
-      result = true;
-      break;
-    }
-  }
-  if (!result)
-  {
-    uint8_t head = 0;
-    if (preferences.isKey(PREFERENCES_LOG_BUFFER_HEAD_KEY))
-    {
-      Log_info("head exists");
-      head = preferences.getUChar(PREFERENCES_LOG_BUFFER_HEAD_KEY, 0);
-    }
-    else
-    {
-      Log_info("head NOT exists");
-    }
-
-    String key = PREFERENCES_LOG_KEY + String(head);
-    size_t res = preferences.putString(key.c_str(), log_buffer);
-    if (res == size)
-    {
-      Log_info("log note written success");
-    }
-    else
-    {
-      Log_info("log note writing failed");
-    }
-
-    head += 1;
-    if (head == LOG_MAX_NOTES_NUMBER)
-    {
-      head = 0;
-    }
-
-    uint8_t result_write = preferences.putUChar(PREFERENCES_LOG_BUFFER_HEAD_KEY, head);
-    if (result_write)
-      Log_info("head written success");
-    else
-      Log_info("head note writing failed");
-  }
-}
-
-void gather_stored_logs(String &log, Preferences &preferences)
-{
-
-  for (uint8_t i = 0; i < LOG_MAX_NOTES_NUMBER; i++)
-  {
-    String key = PREFERENCES_LOG_KEY + String(i);
-    if (preferences.isKey(key.c_str()))
-    {
-      Log_info("log note exists");
-      String note = preferences.getString(key.c_str(), "");
-      if (note.length() > 0)
-      {
-        log += note;
-
-        String next_key = PREFERENCES_LOG_KEY + String(i+1);
-        if (preferences.isKey(next_key.c_str()))
-        {
-          log += ",";
+void storeLog(const char* log_buffer, size_t size, Preferences& preferences) {
+    /**
+     * Attempt to write to the next available preference key.
+     */
+    for (uint8_t index = 0; index < LOG_MAX_NOTES_NUMBER; index++) {
+        const char* preferenceKey = (PREFERENCES_LOG_KEY + String(index)).c_str();
+        if (preferences.isKey(preferenceKey)) {
+            continue;
         }
-      }
+
+        size_t sizeWritten = preferences.putString(preferenceKey, log_buffer);
+        Log_info(
+            "Writing [%s], Size [%d]: [%s]",
+            preferenceKey, size, sizeWritten == size ? "Success" : "Fail"
+        );
+        return;
     }
-  }
+
+    /**
+     * Get the next available overwrite index.
+     */
+    uint8_t overwriteHead = 0;
+    if (preferences.isKey(PREFERENCES_LOG_BUFFER_HEAD_KEY)) {
+        overwriteHead = preferences.getUChar(PREFERENCES_LOG_BUFFER_HEAD_KEY, 0);
+    }
+
+    /**
+     * Overwrite the next available preference key.
+     */
+    const char* preferenceKey = (PREFERENCES_LOG_KEY + String(overwriteHead)).c_str();
+    size_t sizeWritten = preferences.putString(preferenceKey, log_buffer);
+    Log_info(
+        "Overwriting [%s], Size [%d]: [%s]",
+        preferenceKey, size, sizeWritten == size ? "Success" : "Fail"
+    );
+
+    /**
+     * Update the next available overwrite index.
+     */
+    overwriteHead++;
+    if (overwriteHead >= LOG_MAX_NOTES_NUMBER) {
+        overwriteHead = 0;
+    }
+    uint8_t sizeWritten = preferences.putUChar(PREFERENCES_LOG_BUFFER_HEAD_KEY, overwriteHead);
+    Log_info(
+        "Head Writing: [%s]",
+        sizeWritten ? "Success" : "Fail"
+    );
 }
 
-void clear_stored_logs(Preferences &preferences)
-{
+void getStoredLogs(String& concatenatedLogs, Preferences& preferences) {
+    for (uint8_t index = 0; index < LOG_MAX_NOTES_NUMBER; index++) {
+        const char* preferenceKey = (PREFERENCES_LOG_KEY + String(index)).c_str();
 
-  for (uint8_t i = 0; i < LOG_MAX_NOTES_NUMBER; i++)
-  {
-    String key = PREFERENCES_LOG_KEY + String(i);
-    if (preferences.isKey(key.c_str()))
-    {
-      Log_info("log note exists");
-      bool note_del = preferences.remove(key.c_str());
-      if (note_del)
-        Log_info("log note deleted");
-      else
-        Log.info("log note not deleted");
+        /**
+         * Skip logs that don't exist or are empty.
+         */
+        if (!preferences.isKey(preferenceKey)) {
+            continue;
+        }
+        String log = preferences.getString(preferenceKey, "");
+        if (log.length() == 0) {
+            continue;
+        }
+
+        /**
+         * Append to the concatenated logs, prefix "," if needed.
+         */
+        if (concatenatedLogs.length() > 0) {
+            concatenatedLogs += ",";
+        }
+        concatenatedLogs += log;
     }
-  }
+}
+
+void removeStoredLogs(Preferences& preferences) {
+    for (uint8_t i = 0; i < LOG_MAX_NOTES_NUMBER; i++) {
+        const char* preferenceKey = (PREFERENCES_LOG_KEY + String(i)).c_str();
+        if (!preferences.isKey(preferenceKey)) {
+            continue;
+        }
+
+        bool isNoteRemoved = preferences.remove(preferenceKey);
+        if (!isNoteRemoved) {
+            Log_info(
+                "Removing [%s]: Fail",
+                preferenceKey
+            );
+        }
+    }
 }

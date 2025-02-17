@@ -7,14 +7,14 @@
  * @param none
  * @return bool result
  */
-bool filesystem_init(void);
+bool fileSystemInit(void);
 
 /**
  * @brief Function to de-init the filesystem
  * @param none
  * @return none
  */
-void filesystem_deinit(void);
+void fileSystemDeInit(void);
 
 /**
  * @brief Function to read data from file
@@ -22,7 +22,7 @@ void filesystem_deinit(void);
  * @param out_buffer pointer to output buffer
  * @return result - true if success; false - if failed
  */
-bool filesystem_read_from_file(const char *name, uint8_t *out_buffer, size_t size);
+bool fileSystemReadFile(const char* name, uint8_t* out_buffer, size_t size);
 
 /**
  * @brief Function to write data to file
@@ -31,21 +31,21 @@ bool filesystem_read_from_file(const char *name, uint8_t *out_buffer, size_t siz
  * @param size size of the input buffer
  * @return result - true if success; false - if failed
  */
-size_t filesystem_write_to_file(const char *name, uint8_t *in_buffer, size_t size);
+size_t fileSystemWriteFile(const char* name, uint8_t* in_buffer, size_t size);
 
 /**
  * @brief Function to check if file exists
  * @param name filename
  * @return result - true if exists; false - if not exists
  */
-bool filesystem_file_exists(const char *name);
+bool fileSystemExists(const char* name);
 
 /**
  * @brief Function to delete the file
  * @param name filename
  * @return result - true if success; false - if failed
  */
-bool filesystem_file_delete(const char *name);
+bool fileSystemDeleteFile(const char* name);
 
 /**
  * @brief Function to rename the file
@@ -53,4 +53,4 @@ bool filesystem_file_delete(const char *name);
  * @param new_name new filename
  * @return result - true if success; false - if failed
  */
-bool filesystem_file_rename(const char *old_name, const char *new_name);
+bool fileSystemRenameFile(const char* old_name, const char* new_name);
