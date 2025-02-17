@@ -6,17 +6,19 @@ bool submitLogToApi(LogApiInput& input) {
     String url = API_LOG_URL + String("/log/");
     bool isHttps = String(API_LOG_URL).startsWith("https://");
 
-    WiFiClientSecure secureClient;
-    WiFiClient insecureClient;
-    WiFiClient client = isHttps ? secureClient : insecureClient;
-
     /**
-     * Skip certificate verification
+     * Init secure client for HTTPS requests
      */
+    WiFiClientSecure secureClient;
     secureClient.setInsecure();
 
+    /**
+     * Init insecure client for HTTP requests
+     */
+    WiFiClient insecureClient;
+
     HTTPClient http;
-    if (!http.begin(client, url)) {
+    if (!http.begin(isHttps ? secureClient : insecureClient, url)) {
         return false;
     }
 
