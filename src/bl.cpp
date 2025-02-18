@@ -25,6 +25,7 @@
 #include <special_function.h>
 #include <api_response_parsing.h>
 #include "logging_parcers.h"
+#include "api-client/httpBegin.h"
 
 bool pref_clear = false;
 
@@ -444,7 +445,7 @@ static https_request_err_e downloadAndShow() {
 
     { // Add a scoping block for HTTPClient https to make sure it is destroyed before WiFiClientSecure *client is
 
-        HTTPClient https;
+        HTTPClient http;
         Log.info("%s [%d]: RSSI: %d\r\n", __FILE__, __LINE__, WiFi.RSSI());
         Log.info("%s [%d]: [HTTPS] begin /api/display/ ...\r\n", __FILE__, __LINE__);
         char new_url[200];
@@ -483,7 +484,7 @@ static https_request_err_e downloadAndShow() {
 
         Log.info("%s [%d]: Added headers:\n\rID: %s\n\rSpecial function: %d\n\rAccess-Token: %s\n\rRefresh_Rate: %s\n\rBattery-Voltage: %s\n\rFW-Version: %s\r\nRSSI: %s\r\n", __FILE__, __LINE__, WiFi.macAddress().c_str(), special_function, api_key.c_str(), String(refresh_rate).c_str(), String(battery_voltage).c_str(), fw_version.c_str(), String(WiFi.RSSI()));
 
-        if (!https.begin(*client, new_url)) {
+        if (!httpBegin(http, new_url)) {
             Log.error("%s [%d]: [HTTPS] Unable to connect\r\n", __FILE__, __LINE__);
             submit_log("unable to connect to the API endpoint");
             return HTTPS_UNABLE_TO_CONNECT;
@@ -493,29 +494,29 @@ static https_request_err_e downloadAndShow() {
         Log.info("%s [%d]: [HTTPS] GET...\r\n", __FILE__, __LINE__);
         Log.info("%s [%d]: [HTTPS] GET Route: %s\r\n", __FILE__, __LINE__, new_url);
         // start connection and send HTTP header
-        https.addHeader("ID", WiFi.macAddress());
-        https.addHeader("Access-Token", api_key);
-        https.addHeader("Refresh-Rate", String(refresh_rate));
-        https.addHeader("Battery-Voltage", String(battery_voltage));
-        https.addHeader("FW-Version", fw_version);
-        https.addHeader("RSSI", String(WiFi.RSSI()));
-        https.addHeader("Width", String(display_width()));
-        https.addHeader("Height", String(display_height()));
+        http.addHeader("ID", WiFi.macAddress());
+        http.addHeader("Access-Token", api_key);
+        http.addHeader("Refresh-Rate", String(refresh_rate));
+        http.addHeader("Battery-Voltage", String(battery_voltage));
+        http.addHeader("FW-Version", fw_version);
+        http.addHeader("RSSI", String(WiFi.RSSI()));
+        http.addHeader("Width", String(display_width()));
+        http.addHeader("Height", String(display_height()));
 
         Log.info("%s [%d]: Special function - %d\r\n", __FILE__, __LINE__, special_function);
         if (special_function != SF_NONE) {
             Log.info("%s [%d]: Add special function - true\r\n", __FILE__, __LINE__);
-            https.addHeader("special_function", "true");
+            http.addHeader("special_function", "true");
         }
 
         delay(5);
 
-        int httpCode = https.GET();
+        int httpCode = http.GET();
 
         // httpCode will be negative on error
         if (httpCode < 0) {
-            Log.error("%s [%d]: [HTTPS] GET... failed, error: %s\r\n", __FILE__, __LINE__, https.errorToString(httpCode).c_str());
-            submit_log("HTTP Client failed with error: %s", https.errorToString(httpCode).c_str());
+            Log.error("%s [%d]: [HTTPS] GET... failed, error: %s\r\n", __FILE__, __LINE__, http.errorToString(httpCode).c_str());
+            submit_log("HTTP Client failed with error: %s", http.errorToString(httpCode).c_str());
             return HTTPS_RESPONSE_CODE_INVALID;
         }
 
@@ -529,8 +530,8 @@ static https_request_err_e downloadAndShow() {
             submit_log("returned code is not OK: %d", httpCode);
         }
 
-        String payload = https.getString();
-        size_t size = https.getSize();
+        String payload = http.getString();
+        size_t size = http.getSize();
         Log.info("%s [%d]: Content size: %d\r\n", __FILE__, __LINE__, size);
         Log.info("%s [%d]: Free heap size: %d\r\n", __FILE__, __LINE__, ESP.getFreeHeap());
         Log.info("%s [%d]: Payload - %s\r\n", __FILE__, __LINE__, payload.c_str());
@@ -915,7 +916,7 @@ static https_request_err_e downloadAndShow() {
             status = false;
 
             Log.info("%s [%d]: [HTTPS] Request to %s\r\n", __FILE__, __LINE__, filename);
-            if (!https.begin(*client, filename)) // HTTPS
+            if (!http.begin(*client, filename)) // HTTPS
             {
                 Log.error("%s [%d]: unable to connect\r\n", __FILE__, __LINE__);
 
@@ -926,13 +927,13 @@ static https_request_err_e downloadAndShow() {
             Log.info("%s [%d]: [HTTPS] GET..\r\n", __FILE__, __LINE__);
             Log.info("%s [%d]: RSSI: %d\r\n", __FILE__, __LINE__, WiFi.RSSI());
             // start connection and send HTTP header
-            int httpCode = https.GET();
+            int httpCode = http.GET();
 
             // httpCode will be negative on error
             if (httpCode < 0) {
-                Log.error("%s [%d]: [HTTPS] GET... failed, error: %d (%s)\r\n", __FILE__, __LINE__, httpCode, https.errorToString(httpCode).c_str());
+                Log.error("%s [%d]: [HTTPS] GET... failed, error: %d (%s)\r\n", __FILE__, __LINE__, httpCode, http.errorToString(httpCode).c_str());
 
-                submit_log("HTTP Client failed with error: %s", https.errorToString(httpCode).c_str());
+                submit_log("HTTP Client failed with error: %s", http.errorToString(httpCode).c_str());
 
                 return HTTPS_REQUEST_FAILED;
             }
@@ -942,22 +943,22 @@ static https_request_err_e downloadAndShow() {
             Log.info("%s [%d]: RSSI: %d\r\n", __FILE__, __LINE__, WiFi.RSSI());
             // file found at server
             if (httpCode != HTTP_CODE_OK && httpCode != HTTP_CODE_MOVED_PERMANENTLY) {
-                Log.error("%s [%d]: [HTTPS] GET... failed, code: %d (%s)\r\n", __FILE__, __LINE__, httpCode, https.errorToString(httpCode).c_str());
+                Log.error("%s [%d]: [HTTPS] GET... failed, code: %d (%s)\r\n", __FILE__, __LINE__, httpCode, http.errorToString(httpCode).c_str());
 
                 submit_log("HTTPS returned code is not OK. Code: %d", httpCode);
                 return HTTPS_REQUEST_FAILED;
             }
-            Log.info("%s [%d]: Content size: %d\r\n", __FILE__, __LINE__, https.getSize());
+            Log.info("%s [%d]: Content size: %d\r\n", __FILE__, __LINE__, http.getSize());
 
             uint32_t counter = 0;
-            if (https.getSize() != DISPLAY_BMP_IMAGE_SIZE) {
+            if (http.getSize() != DISPLAY_BMP_IMAGE_SIZE) {
                 Log.error("%s [%d]: Receiving failed. Bad file size\r\n", __FILE__, __LINE__);
 
-                submit_log("HTTPS request error. Returned code - %d, available bytes - %d, received bytes - %d", httpCode, https.getSize(), counter);
+                submit_log("HTTPS request error. Returned code - %d, available bytes - %d, received bytes - %d", httpCode, http.getSize(), counter);
 
                 return HTTPS_REQUEST_FAILED;
             }
-            WiFiClient* stream = https.getStreamPtr();
+            WiFiClient* stream = http.getStreamPtr();
             Log.info("%s [%d]: RSSI: %d\r\n", __FILE__, __LINE__, WiFi.RSSI());
             Log.info("%s [%d]: Stream timeout: %d\r\n", __FILE__, __LINE__, stream->getTimeout());
 
@@ -990,7 +991,7 @@ static https_request_err_e downloadAndShow() {
                 Log.error("%s [%d]: Receiving failed. Readed: %d\r\n", __FILE__, __LINE__, counter);
 
                 // display_show_msg(const_cast<uint8_t *>(default_icon), API_SIZE_ERROR);
-                submit_log("HTTPS request error. Returned code - %d, available bytes - %d, received bytes - %d in %d iterations", httpCode, https.getSize(), counter, iteration_counter);
+                submit_log("HTTPS request error. Returned code - %d, available bytes - %d, received bytes - %d in %d iterations", httpCode, http.getSize(), counter, iteration_counter);
 
                 return HTTPS_WRONG_IMAGE_SIZE;
             }
@@ -1097,21 +1098,21 @@ static void getDeviceCredentials() {
     if (client) {
         {
             // Add a scoping block for HTTPClient https to make sure it is destroyed before WiFiClientSecure *client is
-            HTTPClient https;
+            HTTPClient http;
 
             Log.info("%s [%d]: [HTTPS] begin /api/setup/ ...\r\n", __FILE__, __LINE__);
             char new_url[200];
             strcpy(new_url, preferences.getString(PREFERENCES_API_URL, API_BASE_URL).c_str());
             strcat(new_url, "/api/setup/");
-            if (https.begin(*client, new_url)) { // HTTPS
+            if (httpBegin(http, new_url)) {
                 Log.info("%s [%d]: RSSI: %d\r\n", __FILE__, __LINE__, WiFi.RSSI());
                 Log.info("%s [%d]: [HTTPS] GET...\r\n", __FILE__, __LINE__);
                 // start connection and send HTTP header
 
-                https.addHeader("ID", WiFi.macAddress());
+                http.addHeader("ID", WiFi.macAddress());
                 Log.info("%s [%d]: Device MAC address: %s\r\n", __FILE__, __LINE__, WiFi.macAddress().c_str());
 
-                int httpCode = https.GET();
+                int httpCode = http.GET();
 
                 // httpCode will be negative on error
                 if (httpCode > 0) {
@@ -1120,15 +1121,15 @@ static void getDeviceCredentials() {
                     // file found at server
                     Log.info("%s [%d]: RSSI: %d\r\n", __FILE__, __LINE__, WiFi.RSSI());
                     if (httpCode == HTTP_CODE_OK) {
-                        Log.info("%s [%d]: Content size: %d\r\n", __FILE__, __LINE__, https.getSize());
-                        String payload = https.getString();
+                        Log.info("%s [%d]: Content size: %d\r\n", __FILE__, __LINE__, http.getSize());
+                        String payload = http.getString();
                         Log.info("%s [%d]: Payload: %s\r\n", __FILE__, __LINE__, payload.c_str());
 
                         auto apiResponse = parseResponse_apiSetup(payload);
 
                         if (apiResponse.outcome == ApiSetupOutcome::DeserializationError) {
                             Log.error("%s [%d]: JSON deserialization error.\r\n", __FILE__, __LINE__);
-                            https.end();
+                            http.end();
                             client->stop();
                             return;
                         }
@@ -1179,16 +1180,16 @@ static void getDeviceCredentials() {
                         submit_log("returned code is not OK. Code - %d", httpCode);
                     }
                 } else {
-                    Log.error("%s [%d]: [HTTPS] GET... failed, error: %s\r\n", __FILE__, __LINE__, https.errorToString(httpCode).c_str());
+                    Log.error("%s [%d]: [HTTPS] GET... failed, error: %s\r\n", __FILE__, __LINE__, http.errorToString(httpCode).c_str());
                     if (WiFi.RSSI() > WIFI_CONNECTION_RSSI) {
                         showMessageWithLogo(API_ERROR);
                     } else {
                         showMessageWithLogo(WIFI_WEAK);
                     }
-                    submit_log("HTTP Client failed with error: %s", https.errorToString(httpCode).c_str());
+                    submit_log("HTTP Client failed with error: %s", http.errorToString(httpCode).c_str());
                 }
 
-                https.end();
+                http.end();
             } else {
                 Log.error("%s [%d]: [HTTPS] Unable to connect\r\n", __FILE__, __LINE__);
                 showMessageWithLogo(WIFI_INTERNAL_ERROR);
@@ -1200,10 +1201,10 @@ static void getDeviceCredentials() {
                 Log.info("%s [%d]: filename - %s\r\n", __FILE__, __LINE__, filename);
 
                 Log.info("%s [%d]: [HTTPS] Request to %s\r\n", __FILE__, __LINE__, filename);
-                if (https.begin(*client, filename)) { // HTTPS
+                if (http.begin(*client, filename)) { // HTTPS
                     Log.info("%s [%d]: [HTTPS] GET..\r\n", __FILE__, __LINE__);
                     // start connection and send HTTP header
-                    int httpCode = https.GET();
+                    int httpCode = http.GET();
 
                     // httpCode will be negative on error
                     if (httpCode > 0) {
@@ -1211,16 +1212,16 @@ static void getDeviceCredentials() {
                         Log.error("%s [%d]: [HTTPS] GET... code: %d\r\n", __FILE__, __LINE__, httpCode);
                         // file found at server
                         if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
-                            Log.info("%s [%d]: Content size: %d\r\n", __FILE__, __LINE__, https.getSize());
+                            Log.info("%s [%d]: Content size: %d\r\n", __FILE__, __LINE__, http.getSize());
 
-                            WiFiClient* stream = https.getStreamPtr();
+                            WiFiClient* stream = http.getStreamPtr();
 
                             uint32_t counter = 0;
                             // Read and save BMP data to buffer
-                            if (stream->available() && https.getSize() == sizeof(buffer)) {
+                            if (stream->available() && http.getSize() == sizeof(buffer)) {
                                 counter = stream->readBytes(buffer, sizeof(buffer));
                             }
-                            https.end();
+                            http.end();
                             if (counter == sizeof(buffer)) {
                                 Log.info("%s [%d]: Received successfully\r\n", __FILE__, __LINE__);
 
@@ -1240,8 +1241,8 @@ static void getDeviceCredentials() {
                                 submit_log("Receiving failed. Readed: %d", counter);
                             }
                         } else {
-                            Log.error("%s [%d]: [HTTPS] GET... failed, error: %s\r\n", __FILE__, __LINE__, https.errorToString(httpCode).c_str());
-                            https.end();
+                            Log.error("%s [%d]: [HTTPS] GET... failed, error: %s\r\n", __FILE__, __LINE__, http.errorToString(httpCode).c_str());
+                            http.end();
                             if (WiFi.RSSI() > WIFI_CONNECTION_RSSI) {
                                 showMessageWithLogo(API_ERROR);
                             } else {
@@ -1250,13 +1251,13 @@ static void getDeviceCredentials() {
                             submit_log("HTTPS received code is not OK. Code: %d", httpCode);
                         }
                     } else {
-                        Log.error("%s [%d]: [HTTPS] GET... failed, error: %s\r\n", __FILE__, __LINE__, https.errorToString(httpCode).c_str());
+                        Log.error("%s [%d]: [HTTPS] GET... failed, error: %s\r\n", __FILE__, __LINE__, http.errorToString(httpCode).c_str());
                         if (WiFi.RSSI() > WIFI_CONNECTION_RSSI) {
                             showMessageWithLogo(API_ERROR);
                         } else {
                             showMessageWithLogo(WIFI_WEAK);
                         }
-                        submit_log("HTTP Client failed with error: %s", https.errorToString(httpCode).c_str());
+                        submit_log("HTTP Client failed with error: %s", http.errorToString(httpCode).c_str());
                     }
                 } else {
                     Log.error("%s [%d]: unable to connect\r\n", __FILE__, __LINE__);
